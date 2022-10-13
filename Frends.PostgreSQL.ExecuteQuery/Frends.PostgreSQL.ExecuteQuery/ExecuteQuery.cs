@@ -1,17 +1,15 @@
-﻿using System;
-using System.Globalization;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Globalization;
 using Frends.PostgreSQL.ExecuteQuery.Definitions;
 using Newtonsoft.Json.Linq;
 using Npgsql;
 using System.Data;
 using System.ComponentModel;
 
-#pragma warning disable 1591
-
 namespace Frends.PostgreSQL.ExecuteQuery;
 
+/// <summary>
+/// Task class.
+/// </summary>
 public static class PostgreSQL
 {
     /// <summary>
@@ -23,58 +21,50 @@ public static class PostgreSQL
     /// <returns>Result of the query. JToken QueryResult</returns>
     public static async Task<Result> ExecuteQuery([PropertyTab] Input input, [PropertyTab] Options options, CancellationToken cancellationToken)
     {
-        using (var conn = new NpgsqlConnection(input.ConnectionString))
+        using var conn = new NpgsqlConnection(input.ConnectionString);
+        await conn.OpenAsync(cancellationToken);
+        var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+        using var cmd = new NpgsqlCommand(input.Query, conn);
+        cmd.CommandTimeout = options.CommandTimeoutSeconds;
+        cmd.Transaction = transaction;
+
+        // Add parameters to command, if any were given.
+        if (input.Parameters != null && input.Parameters.Length > 0)
         {
-            await conn.OpenAsync(cancellationToken);
-            var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
-            using (var cmd = new NpgsqlCommand(input.Query, conn))
+            foreach (var parameter in input.Parameters)
             {
-                cmd.CommandTimeout = options.CommandTimeoutSeconds;
-                cmd.Transaction = transaction;
+                cancellationToken.ThrowIfCancellationRequested();
 
-                // Add parameters to command, if any were given.
-                if (input.Parameters != null && input.Parameters.Length > 0)
-                {
-                    foreach (var parameter in input.Parameters)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        // Convert parameter.Value to DBNull.Value if it is set to null.
-                        if (parameter.Value == null)
-                        {
-                            cmd.Parameters.AddWithValue(parameter.Name, DBNull.Value);
-                        }
-                        else
-                        {
-                            cmd.Parameters.AddWithValue(parameter.Name, parameter.Value);
-                        }
-                    }
-                }
-
-                // Execute command.
-
-                if (input.Query.ToLower().Contains("select"))
-                {
-                    var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-                    var result = reader.ToJson();
-                    conn.Close();
-                    return new Result(result);
-                }
+                // Convert parameter.Value to DBNull.Value if it is set to null.
+                if (parameter.Value == null)
+                    cmd.Parameters.AddWithValue(parameter.Name, DBNull.Value);
                 else
-                {
-                    var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
-                    transaction.Commit();
-                    conn.Close();
-                    return new Result(JToken.FromObject(new { AffectedRows = rows }));
-                }
+                    cmd.Parameters.AddWithValue(parameter.Name, parameter.Value);
             }
+        }
+
+        // Execute command.
+
+        if (input.Query.ToLower().Contains("select"))
+        {
+            var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            var result = reader.ToJson(cancellationToken);
+            conn.Close();
+            return new Result(result);
+        }
+        else
+        {
+            var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
+            transaction.Commit();
+            conn.Close();
+            return new Result(JToken.FromObject(new { AffectedRows = rows }));
         }
     }
 
     #region HelperMethods
 
     // Extension method for NpgsqlDataReader to read the data and return it as JToken.
-    private static JToken ToJson(this NpgsqlDataReader reader)
+    private static JToken ToJson(this NpgsqlDataReader reader, CancellationToken cancellationToken)
     {
         // Create JSON result.
         using (var writer = new JTokenWriter())
@@ -87,6 +77,7 @@ public static class PostgreSQL
 
             while (reader.Read())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 // Start row object.
                 writer.WriteStartObject();
                 for (var i = 0; i < reader.FieldCount; i++)
