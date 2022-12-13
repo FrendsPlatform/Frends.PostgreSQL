@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    uses: FrendsPlatform/FrendsTasks/.github/workflows/linux_build_test.yml@main
+    uses: FrendsPlatform/FrendsTasks/.github/workflows/linux_build_test.yml@add-azure-artifacts-push
     with:
       workdir: Frends.PostgreSQL.ExecuteQuery
       prebuild_command: docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
