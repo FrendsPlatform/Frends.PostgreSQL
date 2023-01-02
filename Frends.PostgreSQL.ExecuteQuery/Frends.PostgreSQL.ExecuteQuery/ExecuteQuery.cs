@@ -49,14 +49,14 @@ public static class PostgreSQL
         {
             var reader = await cmd.ExecuteReaderAsync(cancellationToken);
             var result = reader.ToJson(cancellationToken);
-            conn.Close();
+            await conn.CloseAsync();
             return new Result(result);
         }
         else
         {
             var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
             transaction.Commit();
-            conn.Close();
+            await conn.CloseAsync();
             return new Result(JToken.FromObject(new { AffectedRows = rows }));
         }
     }
