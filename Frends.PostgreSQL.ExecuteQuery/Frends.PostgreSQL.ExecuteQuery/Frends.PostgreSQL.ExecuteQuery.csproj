@@ -7,7 +7,7 @@
 	<IncludeSource>true</IncludeSource>
 	<AssemblyName>Frends.PostgreSQL.ExecuteQuery</AssemblyName>
 	<RootNamespace>Frends.PostgreSQL.ExecuteQuery</RootNamespace>
-	<Version>1.0.2</Version>
+	<Version>1.0.1</Version>
 	<Authors>Frends</Authors>
 	<Copyright>Frends</Copyright>
 	<Company>Frends</Company>

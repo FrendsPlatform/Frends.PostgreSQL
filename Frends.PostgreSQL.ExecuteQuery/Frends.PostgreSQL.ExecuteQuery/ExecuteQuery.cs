@@ -4,6 +4,9 @@ using Newtonsoft.Json.Linq;
 using Npgsql;
 using System.Data;
 using System.ComponentModel;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 
 namespace Frends.PostgreSQL.ExecuteQuery;
 
@@ -12,6 +15,16 @@ namespace Frends.PostgreSQL.ExecuteQuery;
 /// </summary>
 public static class PostgreSQL
 {
+
+    // For memory cleanup.
+    static PostgreSQL()
+    {
+        var currentAssembly = Assembly.GetExecutingAssembly();
+        var currentContext = AssemblyLoadContext.GetLoadContext(currentAssembly);
+        if (currentContext != null)
+            currentContext.Unloading += OnPluginUnloadingRequested;
+    }
+
     /// <summary>
     /// Query data using PostgreSQL. [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.PostgreSQL.ExecuteQuery)
     /// </summary>
@@ -121,4 +134,9 @@ public static class PostgreSQL
     }
 
     #endregion
+
+    private static void OnPluginUnloadingRequested(AssemblyLoadContext obj)
+    {
+        obj.Unloading -= OnPluginUnloadingRequested;
+    }
 }
