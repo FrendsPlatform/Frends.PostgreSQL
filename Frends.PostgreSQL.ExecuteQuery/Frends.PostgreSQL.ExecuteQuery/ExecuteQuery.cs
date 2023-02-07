@@ -4,6 +4,8 @@ using Newtonsoft.Json.Linq;
 using Npgsql;
 using System.Data;
 using System.ComponentModel;
+using System.Reflection;
+using System.Runtime.Loader;
 
 namespace Frends.PostgreSQL.ExecuteQuery;
 
@@ -12,6 +14,16 @@ namespace Frends.PostgreSQL.ExecuteQuery;
 /// </summary>
 public static class PostgreSQL
 {
+
+    // For memory cleanup.
+    static PostgreSQL()
+    {
+        var currentAssembly = Assembly.GetExecutingAssembly();
+        var currentContext = AssemblyLoadContext.GetLoadContext(currentAssembly);
+        if (currentContext != null)
+            currentContext.Unloading += OnPluginUnloadingRequested;
+    }
+
     /// <summary>
     /// Query data using PostgreSQL. [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.PostgreSQL.ExecuteQuery)
     /// </summary>
@@ -21,12 +33,13 @@ public static class PostgreSQL
     /// <returns>Result of the query. JToken QueryResult</returns>
     public static async Task<Result> ExecuteQuery([PropertyTab] Input input, [PropertyTab] Options options, CancellationToken cancellationToken)
     {
+        Result result;
+        
         using var conn = new NpgsqlConnection(input.ConnectionString);
         await conn.OpenAsync(cancellationToken);
-        var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+        
         using var cmd = new NpgsqlCommand(input.Query, conn);
         cmd.CommandTimeout = options.CommandTimeoutSeconds;
-        cmd.Transaction = transaction;
 
         // Add parameters to command, if any were given.
         if (input.Parameters != null && input.Parameters.Length > 0)
@@ -48,17 +61,21 @@ public static class PostgreSQL
         if (input.Query.ToLower().Contains("select"))
         {
             var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-            var result = reader.ToJson(cancellationToken);
-            conn.Close();
-            return new Result(result);
+            result = new Result(reader.ToJson(cancellationToken));
         }
         else
         {
+            var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+            cmd.Transaction = transaction;
             var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
-            transaction.Commit();
-            conn.Close();
-            return new Result(JToken.FromObject(new { AffectedRows = rows }));
+            await transaction.CommitAsync(cancellationToken);
+            transaction.Dispose();
+            result = new Result(JToken.FromObject(new { AffectedRows = rows }));
         }
+
+        await conn.CloseAsync();
+
+        return result;
     }
 
     #region HelperMethods
@@ -116,4 +133,9 @@ public static class PostgreSQL
     }
 
     #endregion
+
+    private static void OnPluginUnloadingRequested(AssemblyLoadContext obj)
+    {
+        obj.Unloading -= OnPluginUnloadingRequested;
+    }
 }
