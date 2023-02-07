@@ -5,7 +5,6 @@ using Npgsql;
 using System.Data;
 using System.ComponentModel;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 
 namespace Frends.PostgreSQL.ExecuteQuery;

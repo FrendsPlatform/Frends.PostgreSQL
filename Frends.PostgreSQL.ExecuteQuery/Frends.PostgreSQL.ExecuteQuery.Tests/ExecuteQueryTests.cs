@@ -70,8 +70,6 @@ public class ExecuteQueryTests
 
         var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
 
-        Console.WriteLine(result.QueryResult);
-
         Assert.AreEqual(1, (int)result.QueryResult[0]["id"]);
         Assert.AreEqual(2, (int)result.QueryResult[1]["id"]);
         Assert.AreEqual(3, (int)result.QueryResult[2]["id"]);
