@@ -34,10 +34,9 @@ public static class PostgreSQL
     public static async Task<Result> ExecuteQuery([PropertyTab] Input input, [PropertyTab] Options options, CancellationToken cancellationToken)
     {
         Result result;
-        
         using var conn = new NpgsqlConnection(input.ConnectionString);
         await conn.OpenAsync(cancellationToken);
-        
+
         using var cmd = new NpgsqlCommand(input.Query, conn);
         cmd.CommandTimeout = options.CommandTimeoutSeconds;
 
@@ -119,16 +118,17 @@ public static class PostgreSQL
     // Determine transaction isolation level from Options-class.
     private static IsolationLevel GetIsolationLevel(TransactionIsolationLevel level)
     {
+
         return level switch
         {
-            TransactionIsolationLevel.None           => IsolationLevel.Unspecified,
+            TransactionIsolationLevel.None => IsolationLevel.Unspecified,
             TransactionIsolationLevel.RepeatableRead => IsolationLevel.RepeatableRead,
             TransactionIsolationLevel.ReadUncommited => IsolationLevel.ReadUncommitted,
-            TransactionIsolationLevel.ReadCommited   => IsolationLevel.ReadCommitted,
-            TransactionIsolationLevel.Snapshot       => IsolationLevel.Snapshot,
-            TransactionIsolationLevel.Default        => IsolationLevel.Serializable,
-            TransactionIsolationLevel.Serializable   => IsolationLevel.Serializable,
-                                                   _ => IsolationLevel.Serializable,
+            TransactionIsolationLevel.ReadCommited => IsolationLevel.ReadCommitted,
+            TransactionIsolationLevel.Snapshot => IsolationLevel.Snapshot,
+            TransactionIsolationLevel.Default => IsolationLevel.Serializable,
+            TransactionIsolationLevel.Serializable => IsolationLevel.Serializable,
+            _ => IsolationLevel.Serializable
         };
     }
 
