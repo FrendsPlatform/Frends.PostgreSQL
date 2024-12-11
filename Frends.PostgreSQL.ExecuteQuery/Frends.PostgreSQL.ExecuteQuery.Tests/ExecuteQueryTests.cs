@@ -11,16 +11,16 @@ namespace Frends.PostgreSQL.ExecuteQuery.Tests;
 public class ExecuteQueryTests
 {
 
-    /// <summary>
-    /// These test requires local postgres database, create it e.g. with
-    ///
-    ///  docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
-    ///
-    /// </summary>
+	/// <summary>
+	/// These test requires local postgres database, create it e.g. with
+	///
+	///  docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
+	///
+	/// </summary>
 
-    private readonly string _connection = "Host=localhost;Database=postgres;Port=5432;User Id=postgres;Password=mysecretpassword;";
+	private readonly string _connection = "Host=localhost;Database=postgres;Port=5432;User Id=postgres;Password=mysecretpassword;";
 
-    private readonly Options _options = new()
+	private readonly Options _options = new()
     {
         CommandTimeoutSeconds = 10,
         SqlTransactionIsolationLevel = TransactionIsolationLevel.Default
@@ -65,14 +65,15 @@ public class ExecuteQueryTests
         {
             Query = "SELECT * FROM lista",
             Parameters = null,
-            ConnectionString = _connection
+            ConnectionString = _connection,
+			ExecuteType = ExecuteTypes.ExecuteReader
         };
 
         var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
 
-        Assert.AreEqual(1, (int)result.QueryResult[0]["id"]);
-        Assert.AreEqual(2, (int)result.QueryResult[1]["id"]);
-        Assert.AreEqual(3, (int)result.QueryResult[2]["id"]);
+        Assert.AreEqual(1, (int)result.Data[0]["id"]);
+        Assert.AreEqual(2, (int)result.Data[1]["id"]);
+        Assert.AreEqual(3, (int)result.Data[2]["id"]);
     }
 
     /// <summary>
@@ -90,7 +91,7 @@ public class ExecuteQueryTests
 
 
         var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
-        Assert.AreEqual(0, result.QueryResult.Count);
+        Assert.AreEqual(0, result.Data.Count);
     }
 
     /// <summary>
@@ -107,10 +108,37 @@ public class ExecuteQueryTests
         };
 
         var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
-        Assert.AreEqual(1, (int)result.QueryResult["AffectedRows"]);
+        Assert.AreEqual(1, result.RecordsAffected);
 
         input.Query = "SELECT * from lista WHERE id=5";
         result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
-        Assert.AreEqual("Viides", (string)result.QueryResult[0]["selite"]);
+        Assert.AreEqual("Viides", (string)result.Data[0]["selite"]);
     }
+
+	/// <summary>
+	/// Test non-query operation with select.
+	/// </summary>
+	[Test]
+	public async Task TestInsertSelectQuery()
+	{
+		var input = new Input
+		{
+			Query = @"
+						INSERT INTO lista (Id, Selite)
+						SELECT 99, Selite
+						FROM lista WHERE Id = 1
+					",
+			Parameters = null,
+			ExecuteType = ExecuteTypes.NonQuery,
+			ConnectionString = _connection
+		};
+
+		var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+		Assert.AreEqual(1, result.RecordsAffected);
+
+		input.Query = "SELECT * from lista WHERE id=99";
+		input.ExecuteType = ExecuteTypes.ExecuteReader;
+		result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+		Assert.AreEqual("Ensimmäinen", (string)result.Data[0]["selite"]);
+	}
 }

@@ -6,6 +6,7 @@ using System.Data;
 using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Data.Common;
 
 namespace Frends.PostgreSQL.ExecuteQuery;
 
@@ -35,52 +36,136 @@ public static class PostgreSQL
     {
         Result result;
         using var conn = new NpgsqlConnection(input.ConnectionString);
-        await conn.OpenAsync(cancellationToken);
 
-        using var cmd = new NpgsqlCommand(input.Query, conn);
-        cmd.CommandTimeout = options.CommandTimeoutSeconds;
+		try
+		{
+			await conn.OpenAsync(cancellationToken);
 
-        // Add parameters to command, if any were given.
-        if (input.Parameters != null && input.Parameters.Length > 0)
-        {
-            foreach (var parameter in input.Parameters)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
+			using var cmd = new NpgsqlCommand(input.Query, conn);
+			cmd.CommandTimeout = options.CommandTimeoutSeconds;
 
-                // Convert parameter.Value to DBNull.Value if it is set to null.
-                if (parameter.Value == null)
-                    cmd.Parameters.AddWithValue(parameter.Name, DBNull.Value);
-                else
-                    cmd.Parameters.AddWithValue(parameter.Name, parameter.Value);
-            }
-        }
+			// Add parameters to command, if any were given.
+			if (input.Parameters != null && input.Parameters.Length > 0)
+			{
+				foreach (var parameter in input.Parameters)
+				{
+					cancellationToken.ThrowIfCancellationRequested();
 
-        // Execute command.
+					// Convert parameter.Value to DBNull.Value if it is set to null.
+					if (parameter.Value == null)
+						cmd.Parameters.AddWithValue(parameter.Name, DBNull.Value);
+					else
+						cmd.Parameters.AddWithValue(parameter.Name, parameter.Value);
+				}
+			}
 
-        if (input.Query.ToLower().Contains("select"))
-        {
-            var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-            result = new Result(reader.ToJson(cancellationToken));
-        }
-        else
-        {
-            var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
-            cmd.Transaction = transaction;
-            var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            transaction.Dispose();
-            result = new Result(JToken.FromObject(new { AffectedRows = rows }));
-        }
+			if (options.SqlTransactionIsolationLevel is TransactionIsolationLevel.None)
+				result = await ExecuteHandler(input, options, cmd, cancellationToken);
+			else
+			{
+				using var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+				cmd.Transaction = transaction;
+				result = await ExecuteHandler(input, options, cmd, cancellationToken);
+			}
 
-        await conn.CloseAsync();
+			return result;
 
-        return result;
+		}
+		catch (Exception ex)
+		{
+			var eMsg = $"ExecuteQuery exception: {ex}.";
+
+			if (options.ThrowErrorOnFailure)
+				throw new Exception(eMsg);
+
+			return new Result(false, 0, eMsg, null);
+		}
     }
 
-    #region HelperMethods
+	private static async Task<Result> ExecuteHandler(Input input, Options options, NpgsqlCommand cmd, CancellationToken cancellationToken)
+	{
+		Result result;
+		object dataObject;
+		NpgsqlDataReader dataReader = null;
+		using var table = new DataTable();
 
-    // Extension method for NpgsqlDataReader to read the data and return it as JToken.
-    private static JToken ToJson(this NpgsqlDataReader reader, CancellationToken cancellationToken)
+		try
+		{
+			switch (input.ExecuteType)
+			{
+				case ExecuteTypes.Auto:
+					if (input.Query.ToLower().StartsWith("select"))
+					{
+						dataReader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+						table.Load(dataReader);
+						result = new Result(true, dataReader.RecordsAffected, null, JToken.FromObject(table));
+						await dataReader.CloseAsync();
+						break;
+					}
+					dataObject = await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+					result = new Result(true, (int)dataObject, null, JToken.FromObject(new { AffectedRows = dataObject }));
+					break;
+				case ExecuteTypes.NonQuery:
+					dataObject = await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+					result = new Result(true, (int)dataObject, null, JToken.FromObject(new { AffectedRows = dataObject }));
+					break;
+				case ExecuteTypes.Scalar:
+					dataObject = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+					result = new Result(true, 1, null, JToken.FromObject(new { Value = dataObject }));
+					break;
+				case ExecuteTypes.ExecuteReader:
+					dataReader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+					table.Load(dataReader);
+					result = new Result(true, dataReader.RecordsAffected, null, JToken.FromObject(table));
+					await dataReader.CloseAsync();
+					break;
+				default:
+					throw new NotSupportedException();
+			}
+
+			if (cmd.Transaction != null)
+				await cmd.Transaction.CommitAsync(cancellationToken);
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			if (dataReader != null && !dataReader.IsClosed)
+				await dataReader.CloseAsync();
+
+			if (cmd.Transaction is null)
+			{
+				if (options.ThrowErrorOnFailure)
+					throw new Exception("ExecuteHandler exception: 'Options.SqlTransactionIsolationLevel = None', so there was no transaction rollback.", ex);
+				else
+					return new Result(false, 0, $"ExecuteHandler exception: 'Options.SqlTransactionIsolationLevel = None', so there was no transaction rollback. {ex}", null);
+			}
+			else
+			{
+				try
+				{
+					await cmd.Transaction.RollbackAsync(cancellationToken);
+				}
+				catch (Exception rollbackEx)
+				{
+					if (options.ThrowErrorOnFailure)
+						throw new Exception("ExecuteHandler exception: An exception occurred on transaction rollback.", rollbackEx);
+					else
+						return new Result(false, 0, $"ExecuteHandler exception: An exception occurred on transaction rollback. Rollback exception: {rollbackEx}. ||  Exception leading to rollback: {ex}", null);
+				}
+
+				if (options.ThrowErrorOnFailure)
+					throw new Exception("ExecuteHandler exception: (If required) transaction rollback completed without exception.", ex);
+				else
+					return new Result(false, 0, $"ExecuteHandler exception: (If required) transaction rollback completed without exception. {ex}.", null);
+			}
+		}
+	}
+
+	#region HelperMethods
+
+	// Extension method for NpgsqlDataReader to read the data and return it as JToken.
+	private static JToken ToJson(this NpgsqlDataReader reader, CancellationToken cancellationToken)
     {
         // Create JSON result.
         using (var writer = new JTokenWriter())
@@ -125,7 +210,6 @@ public static class PostgreSQL
             TransactionIsolationLevel.RepeatableRead => IsolationLevel.RepeatableRead,
             TransactionIsolationLevel.ReadUncommited => IsolationLevel.ReadUncommitted,
             TransactionIsolationLevel.ReadCommited => IsolationLevel.ReadCommitted,
-            TransactionIsolationLevel.Snapshot => IsolationLevel.Snapshot,
             TransactionIsolationLevel.Default => IsolationLevel.Serializable,
             TransactionIsolationLevel.Serializable => IsolationLevel.Serializable,
             _ => IsolationLevel.Serializable

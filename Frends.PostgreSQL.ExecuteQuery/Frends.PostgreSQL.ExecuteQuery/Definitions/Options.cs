@@ -6,12 +6,18 @@ namespace Frends.PostgreSQL.ExecuteQuery.Definitions;
 /// </summary>
 public class Options
 {
+	/// <summary>
+	/// (true) Throw an exception or (false) stop the Task and return result object containing Result.Success = false and Result.ErrorMessage = 'exception message'.
+	/// </summary>
+	/// <example>true</example>
+	[DefaultValue(true)]
+	public bool ThrowErrorOnFailure { get; set; }
 
-    /// <summary>
-    /// Timeout in seconds.
-    /// </summary>
-    /// <example>30</example>
-    [DefaultValue(30)]
+	/// <summary>
+	/// Timeout in seconds.
+	/// </summary>
+	/// <example>30</example>
+	[DefaultValue(30)]
     public int CommandTimeoutSeconds { get; set; }
 
     /// <summary>
