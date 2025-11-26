@@ -56,31 +56,36 @@ public static class PostgreSQL
         }
 
         // Execute command based on ExecuteType.
-        var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
-        cmd.Transaction = transaction;
-
         switch (input.ExecuteType)
         {
             case ExecuteTypes.Auto:
-                // Auto-detect: Use ExecuteReader and check if data is returned
-                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
+                // Auto-detect: Try ExecuteReader first to check if data is returned
                 {
-                    // Check if the query returned any data (has columns)
-                    if (reader.FieldCount > 0)
+                    var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+                    cmd.Transaction = transaction;
+                    
+                    using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
                     {
-                        // Query returned data (SELECT or RETURNING clause)
-                        result = new Result(reader.ToJson(cancellationToken));
-                    }
-                    else
-                    {
-                        // Query did not return data, use RecordsAffected
-                        result = new Result(JToken.FromObject(new { AffectedRows = reader.RecordsAffected }));
-                    }
+                        // Check if the query returned any data (has columns)
+                        if (reader.FieldCount > 0)
+                        {
+                            // Query returned data (SELECT or RETURNING clause)
+                            result = new Result(reader.ToJson(cancellationToken));
+                        }
+                        else
+                        {
+                            // Query did not return data, use RecordsAffected
+                            result = new Result(JToken.FromObject(new { AffectedRows = reader.RecordsAffected }));
+                        }
+                    } // Reader is disposed here
+                    
+                    await transaction.CommitAsync(cancellationToken);
+                    transaction.Dispose();
                 }
                 break;
 
             case ExecuteTypes.ExecuteReader:
-                // Explicitly return data
+                // Explicitly return data - no transaction needed for read-only queries
                 using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
                 {
                     result = new Result(reader.ToJson(cancellationToken));
@@ -88,17 +93,20 @@ public static class PostgreSQL
                 break;
 
             case ExecuteTypes.NonQuery:
-                // Execute without returning data
-                var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
-                result = new Result(JToken.FromObject(new { AffectedRows = rows }));
+                // Execute without returning data - use transaction
+                {
+                    var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+                    cmd.Transaction = transaction;
+                    var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
+                    result = new Result(JToken.FromObject(new { AffectedRows = rows }));
+                    await transaction.CommitAsync(cancellationToken);
+                    transaction.Dispose();
+                }
                 break;
 
             default:
                 throw new ArgumentException($"Unsupported ExecuteType: {input.ExecuteType}");
         }
-
-        await transaction.CommitAsync(cancellationToken);
-        transaction.Dispose();
 
         await conn.CloseAsync();
 
