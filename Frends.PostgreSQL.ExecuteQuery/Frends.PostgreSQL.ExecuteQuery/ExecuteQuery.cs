@@ -63,7 +63,7 @@ public static class PostgreSQL
                 {
                     using var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
                     cmd.Transaction = transaction;
-                    
+
                     using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
                     {
                         // Check if the query returned any data (has columns)
@@ -78,7 +78,7 @@ public static class PostgreSQL
                             result = new Result(JToken.FromObject(new { AffectedRows = reader.RecordsAffected }));
                         }
                     } // Reader is disposed here
-                    
+
                     await transaction.CommitAsync(cancellationToken);
                 }
                 break;

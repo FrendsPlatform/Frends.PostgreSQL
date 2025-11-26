@@ -128,7 +128,7 @@ public class ExecuteQueryTests
         };
 
         var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
-        
+
         // Should return the inserted values, not AffectedRows
         Assert.IsNotNull(result.QueryResult);
         Assert.AreEqual(1, result.QueryResult.Count);
@@ -150,7 +150,7 @@ public class ExecuteQueryTests
         };
 
         var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
-        
+
         // Should return the updated values
         Assert.IsNotNull(result.QueryResult);
         Assert.AreEqual(1, result.QueryResult.Count);
@@ -180,7 +180,7 @@ public class ExecuteQueryTests
         // Now delete it with RETURNING
         input.Query = @"DELETE FROM ""lista"" WHERE Id = 7 RETURNING Id, Selite";
         var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
-        
+
         // Should return the deleted values
         Assert.IsNotNull(result.QueryResult);
         Assert.AreEqual(1, result.QueryResult.Count);
@@ -203,7 +203,7 @@ public class ExecuteQueryTests
         };
 
         var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
-        
+
         // Should return the inserted values
         Assert.IsNotNull(result.QueryResult);
         Assert.AreEqual(1, result.QueryResult.Count);
@@ -226,7 +226,7 @@ public class ExecuteQueryTests
         };
 
         var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
-        
+
         // Should return affected rows
         Assert.AreEqual(1, (int)result.QueryResult["AffectedRows"]);
     }
