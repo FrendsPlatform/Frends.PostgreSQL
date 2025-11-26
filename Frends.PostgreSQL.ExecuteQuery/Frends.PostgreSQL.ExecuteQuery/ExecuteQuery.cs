@@ -61,7 +61,7 @@ public static class PostgreSQL
             case ExecuteTypes.Auto:
                 // Auto-detect: Try ExecuteReader first to check if data is returned
                 {
-                    var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+                    using var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
                     cmd.Transaction = transaction;
                     
                     using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
@@ -80,7 +80,6 @@ public static class PostgreSQL
                     } // Reader is disposed here
                     
                     await transaction.CommitAsync(cancellationToken);
-                    transaction.Dispose();
                 }
                 break;
 
@@ -95,12 +94,11 @@ public static class PostgreSQL
             case ExecuteTypes.NonQuery:
                 // Execute without returning data - use transaction
                 {
-                    var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+                    using var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
                     cmd.Transaction = transaction;
                     var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
                     result = new Result(JToken.FromObject(new { AffectedRows = rows }));
                     await transaction.CommitAsync(cancellationToken);
-                    transaction.Dispose();
                 }
                 break;
 
