@@ -57,7 +57,8 @@ public static class PostgreSQL
 
         // Execute command.
 
-        if (input.Query.ToLower().Contains("select"))
+        var queryLower = input.Query.ToLower();
+        if (queryLower.Contains("select") || queryLower.Contains("returning"))
         {
             var reader = await cmd.ExecuteReaderAsync(cancellationToken);
             result = new Result(reader.ToJson(cancellationToken));
