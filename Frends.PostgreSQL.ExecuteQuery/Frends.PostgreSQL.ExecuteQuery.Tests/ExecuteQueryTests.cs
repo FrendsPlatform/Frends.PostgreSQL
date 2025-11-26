@@ -187,4 +187,47 @@ public class ExecuteQueryTests
         Assert.AreEqual(7, (int)result.QueryResult[0]["id"]);
         Assert.AreEqual("Seitsem�s", (string)result.QueryResult[0]["selite"]);
     }
+
+    /// <summary>
+    /// Test INSERT with RETURNING clause using ExecuteType.ExecuteReader explicitly.
+    /// </summary>
+    [Test]
+    public async Task TestInsertWithReturningExplicit()
+    {
+        var input = new Input
+        {
+            Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (8, 'Kahdeksas') RETURNING Id, Selite",
+            Parameters = null,
+            ConnectionString = _connection,
+            ExecuteType = ExecuteTypes.ExecuteReader
+        };
+
+        var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+        
+        // Should return the inserted values
+        Assert.IsNotNull(result.QueryResult);
+        Assert.AreEqual(1, result.QueryResult.Count);
+        Assert.AreEqual(8, (int)result.QueryResult[0]["id"]);
+        Assert.AreEqual("Kahdeksas", (string)result.QueryResult[0]["selite"]);
+    }
+
+    /// <summary>
+    /// Test INSERT without RETURNING using ExecuteType.NonQuery explicitly.
+    /// </summary>
+    [Test]
+    public async Task TestInsertWithNonQueryExplicit()
+    {
+        var input = new Input
+        {
+            Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (9, 'Yhdeks�s')",
+            Parameters = null,
+            ConnectionString = _connection,
+            ExecuteType = ExecuteTypes.NonQuery
+        };
+
+        var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+        
+        // Should return affected rows
+        Assert.AreEqual(1, (int)result.QueryResult["AffectedRows"]);
+    }
 }

@@ -55,23 +55,50 @@ public static class PostgreSQL
             }
         }
 
-        // Execute command.
+        // Execute command based on ExecuteType.
+        var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+        cmd.Transaction = transaction;
 
-        var queryLower = input.Query.ToLower();
-        if (queryLower.Contains("select") || queryLower.Contains("returning"))
+        switch (input.ExecuteType)
         {
-            var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-            result = new Result(reader.ToJson(cancellationToken));
+            case ExecuteTypes.Auto:
+                // Auto-detect: Use ExecuteReader and check if data is returned
+                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
+                {
+                    // Check if the query returned any data (has columns)
+                    if (reader.FieldCount > 0)
+                    {
+                        // Query returned data (SELECT or RETURNING clause)
+                        result = new Result(reader.ToJson(cancellationToken));
+                    }
+                    else
+                    {
+                        // Query did not return data, use RecordsAffected
+                        result = new Result(JToken.FromObject(new { AffectedRows = reader.RecordsAffected }));
+                    }
+                }
+                break;
+
+            case ExecuteTypes.ExecuteReader:
+                // Explicitly return data
+                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
+                {
+                    result = new Result(reader.ToJson(cancellationToken));
+                }
+                break;
+
+            case ExecuteTypes.NonQuery:
+                // Execute without returning data
+                var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
+                result = new Result(JToken.FromObject(new { AffectedRows = rows }));
+                break;
+
+            default:
+                throw new ArgumentException($"Unsupported ExecuteType: {input.ExecuteType}");
         }
-        else
-        {
-            var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
-            cmd.Transaction = transaction;
-            var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            transaction.Dispose();
-            result = new Result(JToken.FromObject(new { AffectedRows = rows }));
-        }
+
+        await transaction.CommitAsync(cancellationToken);
+        transaction.Dispose();
 
         await conn.CloseAsync();
 
