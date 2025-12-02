@@ -36,7 +36,7 @@ public class ExecuteQueryTests
         {
             cmd.ExecuteNonQuery();
         }
-        using (var cmd = new NpgsqlCommand(@"INSERT INTO ""lista"" (Id, Selite) VALUES (1, 'Ensimmäinen'), (2, 'foobar'), (3, ''), (4, null)", conn))
+        using (var cmd = new NpgsqlCommand(@"INSERT INTO ""lista"" (Id, Selite) VALUES (1, 'Ensimmï¿½inen'), (2, 'foobar'), (3, ''), (4, null)", conn))
         {
             cmd.ExecuteNonQuery();
         }
@@ -112,5 +112,122 @@ public class ExecuteQueryTests
         input.Query = "SELECT * from lista WHERE id=5";
         result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
         Assert.AreEqual("Viides", (string)result.QueryResult[0]["selite"]);
+    }
+
+    /// <summary>
+    /// Test INSERT with RETURNING clause.
+    /// </summary>
+    [Test]
+    public async Task TestInsertWithReturning()
+    {
+        var input = new Input
+        {
+            Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (6, 'Kuudes') RETURNING Id, Selite",
+            Parameters = null,
+            ConnectionString = _connection
+        };
+
+        var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+
+        // Should return the inserted values, not AffectedRows
+        Assert.IsNotNull(result.QueryResult);
+        Assert.AreEqual(1, result.QueryResult.Count);
+        Assert.AreEqual(6, (int)result.QueryResult[0]["id"]);
+        Assert.AreEqual("Kuudes", (string)result.QueryResult[0]["selite"]);
+    }
+
+    /// <summary>
+    /// Test UPDATE with RETURNING clause.
+    /// </summary>
+    [Test]
+    public async Task TestUpdateWithReturning()
+    {
+        var input = new Input
+        {
+            Query = @"UPDATE ""lista"" SET Selite = 'Updated' WHERE Id = 1 RETURNING Id, Selite",
+            Parameters = null,
+            ConnectionString = _connection
+        };
+
+        var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+
+        // Should return the updated values
+        Assert.IsNotNull(result.QueryResult);
+        Assert.AreEqual(1, result.QueryResult.Count);
+        Assert.AreEqual(1, (int)result.QueryResult[0]["id"]);
+        Assert.AreEqual("Updated", (string)result.QueryResult[0]["selite"]);
+
+        // Restore original value
+        input.Query = @"UPDATE ""lista"" SET Selite = 'Ensimmï¿½inen' WHERE Id = 1";
+        await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+    }
+
+    /// <summary>
+    /// Test DELETE with RETURNING clause.
+    /// </summary>
+    [Test]
+    public async Task TestDeleteWithReturning()
+    {
+        // First, insert a row to delete
+        var input = new Input
+        {
+            Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (7, 'Seitsemï¿½s')",
+            Parameters = null,
+            ConnectionString = _connection
+        };
+        await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+
+        // Now delete it with RETURNING
+        input.Query = @"DELETE FROM ""lista"" WHERE Id = 7 RETURNING Id, Selite";
+        var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+
+        // Should return the deleted values
+        Assert.IsNotNull(result.QueryResult);
+        Assert.AreEqual(1, result.QueryResult.Count);
+        Assert.AreEqual(7, (int)result.QueryResult[0]["id"]);
+        Assert.AreEqual("Seitsemï¿½s", (string)result.QueryResult[0]["selite"]);
+    }
+
+    /// <summary>
+    /// Test INSERT with RETURNING clause using ExecuteType.ExecuteReader explicitly.
+    /// </summary>
+    [Test]
+    public async Task TestInsertWithReturningExplicit()
+    {
+        var input = new Input
+        {
+            Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (8, 'Kahdeksas') RETURNING Id, Selite",
+            Parameters = null,
+            ConnectionString = _connection,
+            ExecuteType = ExecuteTypes.ExecuteReader
+        };
+
+        var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+
+        // Should return the inserted values
+        Assert.IsNotNull(result.QueryResult);
+        Assert.AreEqual(1, result.QueryResult.Count);
+        Assert.AreEqual(8, (int)result.QueryResult[0]["id"]);
+        Assert.AreEqual("Kahdeksas", (string)result.QueryResult[0]["selite"]);
+    }
+
+    /// <summary>
+    /// Test INSERT without RETURNING using ExecuteType.NonQuery explicitly.
+    /// </summary>
+    [Test]
+    public async Task TestInsertWithNonQueryExplicit()
+    {
+        var input = new Input
+        {
+            Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (9, 'Yhdeksï¿½s')",
+            Parameters = null,
+            ConnectionString = _connection,
+            ExecuteType = ExecuteTypes.NonQuery
+        };
+
+        var result = await PostgreSQL.ExecuteQuery(input, _options, new CancellationToken());
+
+        // Should return affected rows
+        Assert.AreEqual(1, (int)result.QueryResult["AffectedRows"]);
     }
 }

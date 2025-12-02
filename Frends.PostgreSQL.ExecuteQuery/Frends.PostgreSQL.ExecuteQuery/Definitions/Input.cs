@@ -32,4 +32,14 @@ public class Input
     [PasswordPropertyText]
     public string ConnectionString { get; set; }
 
+    /// <summary>
+    /// Specifies how a command string is interpreted.
+    /// Auto: Automatically detects if the query returns data (SELECT or RETURNING clause) and uses ExecuteReader, otherwise uses NonQuery.
+    /// ExecuteReader: Use this to execute queries that return a result set (SELECT or INSERT/UPDATE/DELETE with RETURNING clause).
+    /// NonQuery: Use this to execute commands that don't return a result set (INSERT, UPDATE, DELETE without RETURNING). Returns the number of affected rows.
+    /// </summary>
+    /// <example>ExecuteTypes.Auto</example>
+    [DefaultValue(ExecuteTypes.Auto)]
+    public ExecuteTypes ExecuteType { get; set; }
+
 }
