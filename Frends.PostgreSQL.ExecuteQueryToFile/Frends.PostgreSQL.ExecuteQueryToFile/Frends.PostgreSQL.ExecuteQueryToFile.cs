@@ -40,7 +40,7 @@ public static class PostgreSQL
     {
         try
         {
-            ValidationHandler.Run(input, connection);
+            ValidationHandler.Run(input, connection, options);
             cancellationToken.ThrowIfCancellationRequested();
 
             var filePath = Path.GetFullPath(input.OutputFilePath);
