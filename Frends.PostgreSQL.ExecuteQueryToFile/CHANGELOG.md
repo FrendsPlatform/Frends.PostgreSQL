@@ -4,4 +4,4 @@
 
 ### Added
 
-- Initial implementation
+- Initial implementation.
