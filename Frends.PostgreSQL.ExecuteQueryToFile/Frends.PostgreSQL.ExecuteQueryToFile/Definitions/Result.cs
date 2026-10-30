@@ -1,4 +1,4 @@
-﻿namespace Frends.PostgreSQL.ExecuteQueryToFile.Definitions;
+namespace Frends.PostgreSQL.ExecuteQueryToFile.Definitions;
 
 /// <summary>
 /// Result of the task.
