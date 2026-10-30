@@ -108,6 +108,12 @@ internal static class JsonQueryWriter
                 var format = column.IsDate ? options.DateFormat : options.DateTimeFormat;
                 writer.WriteStringValue(dateTime.ToString(format, CultureInfo.InvariantCulture));
                 break;
+            case DateOnly dateOnly:
+                writer.WriteStringValue(dateOnly.ToString(options.DateFormat, CultureInfo.InvariantCulture));
+                break;
+            case TimeOnly timeOnly:
+                writer.WriteStringValue(timeOnly.ToString("HH:mm:ss.FFFFFFF", CultureInfo.InvariantCulture));
+                break;
             case DateTimeOffset dateTimeOffset:
                 writer.WriteStringValue(ColumnSchema.FormatDateTimeOffset(dateTimeOffset, column.IsTimeWithTimeZone));
                 break;

@@ -80,6 +80,12 @@ internal static class CsvQueryWriter
                 var format = column.IsDate ? options.DateFormat : options.DateTimeFormat;
                 WriteField(writer, dateTime.ToString(format, CultureInfo.InvariantCulture), options.AddQuotesToDates, delimiter);
                 break;
+            case DateOnly dateOnly:
+                WriteField(writer, dateOnly.ToString(options.DateFormat, CultureInfo.InvariantCulture), options.AddQuotesToDates, delimiter);
+                break;
+            case TimeOnly timeOnly:
+                WriteField(writer, timeOnly.ToString("HH:mm:ss.FFFFFFF", CultureInfo.InvariantCulture), options.AddQuotesToDates, delimiter);
+                break;
             case DateTimeOffset dateTimeOffset:
                 WriteField(writer, ColumnSchema.FormatDateTimeOffset(dateTimeOffset, column.IsTimeWithTimeZone), options.AddQuotesToDates, delimiter);
                 break;
