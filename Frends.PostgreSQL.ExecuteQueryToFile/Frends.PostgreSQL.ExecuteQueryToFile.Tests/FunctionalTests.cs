@@ -36,7 +36,7 @@ internal class FunctionalTests : TestBase
         Assert.That(result.Error, Is.Null);
         Assert.That(result.RowsWritten, Is.EqualTo(4));
         Assert.That(result.FilePath, Is.EqualTo(OutputPath));
-        Assert.That(File.ReadAllText(OutputPath), Is.EqualTo(expected));
+        Assert.That(await File.ReadAllTextAsync(OutputPath), Is.EqualTo(expected));
         Assert.That(FilesInOutputDirectory(), Is.EqualTo(new[] { "output.out" }));
     }
 
@@ -61,7 +61,7 @@ internal class FunctionalTests : TestBase
         var result = await PostgreSQL.ExecuteQueryToFile(input, DefaultConnection(), options, CancellationToken.None);
 
         Assert.That(result.RowsWritten, Is.EqualTo(2));
-        Assert.That(File.ReadAllText(OutputPath), Is.EqualTo("1##Erik##\"05.03.2024\"##\"10:11\"\n3######\n"));
+        Assert.That(await File.ReadAllTextAsync(OutputPath), Is.EqualTo("1##Erik##\"05.03.2024\"##\"10:11\"\n3######\n"));
     }
 
     [Test]
@@ -73,7 +73,7 @@ internal class FunctionalTests : TestBase
 
         await PostgreSQL.ExecuteQueryToFile(input, DefaultConnection(), options, CancellationToken.None);
 
-        Assert.That(File.ReadAllText(OutputPath), Is.EqualTo("x|y\r\n\"a|b\"|c,d\r\n"));
+        Assert.That(await File.ReadAllTextAsync(OutputPath), Is.EqualTo("x|y\r\n\"a|b\"|c,d\r\n"));
     }
 
     [Test]
@@ -85,7 +85,7 @@ internal class FunctionalTests : TestBase
 
         await PostgreSQL.ExecuteQueryToFile(input, DefaultConnection(), options, CancellationToken.None);
 
-        var lines = File.ReadAllLines(OutputPath);
+        var lines = await File.ReadAllLinesAsync(OutputPath);
         Assert.That(lines[0], Is.EqualTo("tags;data;doc"));
         Assert.That(lines[1], Is.EqualTo("{1,2,3};AQI=;\"{\"\"a\"\": [1, 2]}\""));
     }
@@ -98,7 +98,7 @@ internal class FunctionalTests : TestBase
 
         await PostgreSQL.ExecuteQueryToFile(DefaultInput("SELECT 'ä' AS x"), DefaultConnection(), options, CancellationToken.None);
 
-        var bytes = File.ReadAllBytes(OutputPath);
+        var bytes = await File.ReadAllBytesAsync(OutputPath);
         Assert.That(bytes.Take(3), Is.EqualTo(new byte[] { 0xEF, 0xBB, 0xBF }));
     }
 
@@ -116,7 +116,7 @@ internal class FunctionalTests : TestBase
 
         await PostgreSQL.ExecuteQueryToFile(DefaultInput("SELECT 'ä' AS x"), DefaultConnection(), options, CancellationToken.None);
 
-        Assert.That(File.ReadAllBytes(OutputPath), Is.EqualTo(new byte[] { 0xE4, 0x0D, 0x0A }));
+        Assert.That(await File.ReadAllBytesAsync(OutputPath), Is.EqualTo(new byte[] { 0xE4, 0x0D, 0x0A }));
     }
 
     [Test]
@@ -125,11 +125,11 @@ internal class FunctionalTests : TestBase
         var options = DefaultOptions();
         options.CsvOptions = new CsvOptions { FileEncoding = FileEncoding.Unicode, IncludeHeadersInOutput = false };
         await PostgreSQL.ExecuteQueryToFile(DefaultInput("SELECT 'a' AS x"), DefaultConnection(), options, CancellationToken.None);
-        Assert.That(File.ReadAllText(OutputPath, Encoding.Unicode), Is.EqualTo("\"a\"\r\n"));
+        Assert.That(await File.ReadAllTextAsync(OutputPath, Encoding.Unicode), Is.EqualTo("\"a\"\r\n"));
 
         options.CsvOptions.FileEncoding = FileEncoding.ASCII;
         await PostgreSQL.ExecuteQueryToFile(DefaultInput("SELECT 'a' AS x"), DefaultConnection(), options, CancellationToken.None);
-        Assert.That(File.ReadAllText(OutputPath, Encoding.ASCII), Is.EqualTo("\"a\"\r\n"));
+        Assert.That(await File.ReadAllTextAsync(OutputPath, Encoding.ASCII), Is.EqualTo("\"a\"\r\n"));
     }
 
     [Test]
@@ -139,7 +139,7 @@ internal class FunctionalTests : TestBase
 
         await PostgreSQL.ExecuteQueryToFile(input, DefaultConnection(), DefaultOptions(), CancellationToken.None);
 
-        Assert.That(File.ReadAllLines(OutputPath)[1], Is.EqualTo("2024-01-02 03:04:05,10:11:12,1.00:00:00"));
+        Assert.That((await File.ReadAllLinesAsync(OutputPath))[1], Is.EqualTo("2024-01-02 03:04:05,10:11:12,1.00:00:00"));
     }
 
     [Test]
@@ -152,7 +152,7 @@ internal class FunctionalTests : TestBase
 
         Assert.That(result.RowsWritten, Is.EqualTo(4));
 
-        using var document = JsonDocument.Parse(File.ReadAllText(OutputPath));
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(OutputPath));
         var rows = document.RootElement.EnumerateArray().ToArray();
         Assert.That(rows, Has.Length.EqualTo(4));
 
@@ -187,7 +187,7 @@ internal class FunctionalTests : TestBase
 
         var result = await PostgreSQL.ExecuteQueryToFile(DefaultInput(), DefaultConnection(), options, CancellationToken.None);
 
-        var lines = File.ReadAllLines(OutputPath);
+        var lines = await File.ReadAllLinesAsync(OutputPath);
         Assert.That(result.RowsWritten, Is.EqualTo(4));
         Assert.That(lines, Has.Length.EqualTo(4));
         Assert.That(lines.Select(line => JsonDocument.Parse(line).RootElement.GetProperty("id").GetInt32()), Is.EqualTo(new[] { 1, 2, 3, 4 }));
@@ -207,7 +207,7 @@ internal class FunctionalTests : TestBase
 
         await PostgreSQL.ExecuteQueryToFile(input, DefaultConnection(), options, CancellationToken.None);
 
-        var content = File.ReadAllText(OutputPath);
+        var content = await File.ReadAllTextAsync(OutputPath);
         Assert.That(content, Does.Contain("ä€"));
 
         using var document = JsonDocument.Parse(content);
@@ -231,13 +231,13 @@ internal class FunctionalTests : TestBase
 
         var csvResult = await PostgreSQL.ExecuteQueryToFile(input, DefaultConnection(), DefaultOptions(), CancellationToken.None);
         Assert.That(csvResult.RowsWritten, Is.Zero);
-        Assert.That(File.ReadAllText(OutputPath), Is.EqualTo("id,name\r\n"));
+        Assert.That(await File.ReadAllTextAsync(OutputPath), Is.EqualTo("id,name\r\n"));
 
         var options = DefaultOptions();
         options.ReturnFormat = ReturnFormat.Json;
         var jsonResult = await PostgreSQL.ExecuteQueryToFile(input, DefaultConnection(), options, CancellationToken.None);
         Assert.That(jsonResult.RowsWritten, Is.Zero);
-        Assert.That(JsonDocument.Parse(File.ReadAllText(OutputPath)).RootElement.GetArrayLength(), Is.Zero);
+        Assert.That(JsonDocument.Parse(await File.ReadAllTextAsync(OutputPath)).RootElement.GetArrayLength(), Is.Zero);
     }
 
     [Test]
@@ -254,7 +254,7 @@ internal class FunctionalTests : TestBase
         var result = await PostgreSQL.ExecuteQueryToFile(input, DefaultConnection(), DefaultOptions(), CancellationToken.None);
 
         Assert.That(result.RowsWritten, Is.EqualTo(2));
-        Assert.That(File.ReadAllLines(OutputPath), Is.EqualTo(new[] { "id", "1", "4" }));
+        Assert.That(await File.ReadAllLinesAsync(OutputPath), Is.EqualTo(new[] { "id", "1", "4" }));
     }
 
     [Test]
@@ -279,7 +279,7 @@ internal class FunctionalTests : TestBase
         var result = await PostgreSQL.ExecuteQueryToFile(DefaultInput("SELECT 1 AS x"), DefaultConnection(), DefaultOptions(), CancellationToken.None);
 
         Assert.That(result.Success, Is.True);
-        Assert.That(File.ReadAllText(OutputPath), Is.EqualTo("x\r\n1\r\n"));
+        Assert.That(await File.ReadAllTextAsync(OutputPath), Is.EqualTo("x\r\n1\r\n"));
         Assert.That(FilesInOutputDirectory(), Is.EqualTo(new[] { "output.out" }));
     }
 
@@ -294,7 +294,7 @@ internal class FunctionalTests : TestBase
             PostgreSQL.ExecuteQueryToFile(input, DefaultConnection(), DefaultOptions(), CancellationToken.None));
 
         Assert.That(ex.Message, Does.Contain(OutputPath));
-        Assert.That(File.ReadAllText(OutputPath), Is.EqualTo("old"));
+        Assert.That(await File.ReadAllTextAsync(OutputPath), Is.EqualTo("old"));
         Assert.That(FilesInOutputDirectory(), Is.EqualTo(new[] { "output.out" }));
     }
 
@@ -306,7 +306,7 @@ internal class FunctionalTests : TestBase
         await Assert.ThrowsAsync<PostgresException>(() =>
             PostgreSQL.ExecuteQueryToFile(DefaultInput("SELECT * FROM missing_table"), DefaultConnection(), DefaultOptions(), CancellationToken.None));
 
-        Assert.That(File.ReadAllText(OutputPath), Is.EqualTo("old"));
+        Assert.That(await File.ReadAllTextAsync(OutputPath), Is.EqualTo("old"));
         Assert.That(FilesInOutputDirectory(), Is.EqualTo(new[] { "output.out" }));
     }
 
@@ -369,7 +369,7 @@ internal class FunctionalTests : TestBase
     public async Task ShouldCreateNoFileWhenCancelledBeforeStart()
     {
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         await Assert.CatchAsync<OperationCanceledException>(() =>
             PostgreSQL.ExecuteQueryToFile(DefaultInput(), DefaultConnection(), DefaultOptions(), cts.Token));

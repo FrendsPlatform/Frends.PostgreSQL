@@ -11,11 +11,11 @@ internal abstract class TestBase
 {
     protected const string TableName = "etf_test_table";
 
-    protected static string ConnectionString => PostgresFixture.ConnectionString;
-
     protected string OutputDirectory { get; private set; }
 
     protected string OutputPath => Path.Combine(OutputDirectory, "output.out");
+
+    private static string ConnectionString => PostgresFixture.ConnectionString;
 
     [OneTimeSetUp]
     public void CreateTestTable()
@@ -58,18 +58,19 @@ internal abstract class TestBase
 
     protected static Options DefaultOptions() => new();
 
+    protected static Connection DefaultConnection() => new() { ConnectionString = ConnectionString };
+
     protected Input DefaultInput(string query = null) => new()
     {
         Query = query ?? $"SELECT * FROM {TableName} ORDER BY id",
         OutputFilePath = OutputPath,
     };
 
-    protected Connection DefaultConnection() => new() { ConnectionString = ConnectionString };
-
     protected string[] FilesInOutputDirectory() =>
-        Directory.GetFiles(OutputDirectory, "*", SearchOption.TopDirectoryOnly)
+    [
+        .. Directory.GetFiles(OutputDirectory, "*", SearchOption.TopDirectoryOnly)
             .Select(Path.GetFileName)
-            .ToArray();
+    ];
 
     private void Execute(string sql)
     {

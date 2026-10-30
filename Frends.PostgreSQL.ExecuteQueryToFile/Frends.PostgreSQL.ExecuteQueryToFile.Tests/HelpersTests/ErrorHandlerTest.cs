@@ -82,7 +82,7 @@ internal class ErrorHandlerTest : TestBase
         var options = DefaultOptions();
         options.ThrowErrorOnFailure = false;
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         await Assert.CatchAsync<OperationCanceledException>(() =>
             PostgreSQL.ExecuteQueryToFile(DefaultInput(), DefaultConnection(), options, cts.Token));

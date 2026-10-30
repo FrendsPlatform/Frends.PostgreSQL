@@ -33,11 +33,11 @@ internal static class CsvQueryWriter
         {
             for (var i = 0; i < columns.Length; i++)
             {
-                if (i > 0) writer.Write(delimiter);
+                if (i > 0) await writer.WriteAsync(delimiter);
                 WriteField(writer, columns[i].Name, false, delimiter);
             }
 
-            writer.WriteLine();
+            await writer.WriteLineAsync();
         }
 
         long rows = 0;
@@ -48,11 +48,11 @@ internal static class CsvQueryWriter
 
             for (var i = 0; i < columns.Length; i++)
             {
-                if (i > 0) writer.Write(delimiter);
+                if (i > 0) await writer.WriteAsync(delimiter);
                 WriteValue(writer, reader, columns[i], options, delimiter);
             }
 
-            writer.WriteLine();
+            await writer.WriteLineAsync();
             rows++;
         }
 
