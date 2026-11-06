@@ -10,6 +10,7 @@ namespace Frends.PostgreSQL.ExecuteQueryToFile.Helpers;
 /// <summary>
 /// Validates objects by their ValidationAttributes.
 /// </summary>
+[ExcludeFromCodeCoverage(Justification = "Untouched version already tested in template solution.")]
 internal static class ValidationHandler
 {
     internal static void Run(params object[] objects)
