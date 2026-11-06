@@ -45,7 +45,7 @@ public class Options
     public JsonOptions JsonOptions { get; set; } = new();
 
     /// <summary>
-    /// Whether to throw an error on failure. If set to false, result has Success set to false and error stored in Error property.
+    /// Whether to throw an error on failure.
     /// </summary>
     /// <example>true</example>
     [DefaultValue(true)]
