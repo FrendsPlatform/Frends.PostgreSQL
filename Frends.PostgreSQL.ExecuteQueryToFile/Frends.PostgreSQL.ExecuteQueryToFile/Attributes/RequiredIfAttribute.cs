@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace Frends.PostgreSQL.ExecuteQueryToFile.Attributes;

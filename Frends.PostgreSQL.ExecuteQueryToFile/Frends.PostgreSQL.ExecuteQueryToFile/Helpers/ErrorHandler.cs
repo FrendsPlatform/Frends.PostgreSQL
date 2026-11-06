@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.ExceptionServices;
 using Frends.PostgreSQL.ExecuteQueryToFile.Definitions;
 
