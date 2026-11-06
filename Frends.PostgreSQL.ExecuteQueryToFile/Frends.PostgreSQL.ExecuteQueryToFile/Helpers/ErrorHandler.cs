@@ -4,6 +4,7 @@ using Frends.PostgreSQL.ExecuteQueryToFile.Definitions;
 
 namespace Frends.PostgreSQL.ExecuteQueryToFile.Helpers;
 
+[ExcludeFromCodeCoverage(Justification = "Untouched version already tested in template solution.")]
 internal static class ErrorHandler
 {
     /// <summary>
