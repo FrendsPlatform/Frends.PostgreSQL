@@ -2,8 +2,9 @@
 
 ## [2.1.0] - 2026-11-25
 ### Changed
-- Updated the Task to .NET 8 and added query success and error details to the result.
-- Added options to return query failures as a result or customize their error message; failures still throw by default.
+- Updated the Task to .NET 8
+- Added `Success` and `Error` to the result.
+- Added `ThrowErrorOnFailure` and `ErrorMessageOnFailure` to the options. Failures still throw by default.
 
 ## [2.0.0] - 2025-12-02
 ### Added
