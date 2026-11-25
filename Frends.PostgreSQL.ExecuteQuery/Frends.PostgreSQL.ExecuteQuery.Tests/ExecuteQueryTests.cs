@@ -10,12 +10,10 @@ namespace Frends.PostgreSQL.ExecuteQuery.Tests;
 [TestFixture]
 public class ExecuteQueryTests
 {
-    /// <summary>
-    /// These test requires local postgres database, create it e.g. with
-    ///
-    ///  docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
-    /// </summary>
-    private readonly string connection = "Host=localhost;Database=postgres;Port=5432;User Id=postgres;Password=mysecretpassword;";
+    // These test requires local postgres database, create it e.g. with
+    // docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
+    private readonly string connection =
+        "Host=localhost;Database=postgres;Port=5432;User Id=postgres;Password=mysecretpassword;";
 
     private readonly Options options = new()
     {
@@ -34,7 +32,9 @@ public class ExecuteQueryTests
             cmd.ExecuteNonQuery();
         }
 
-        using (var cmd = new NpgsqlCommand(@"INSERT INTO ""lista"" (Id, Selite) VALUES (1, 'Ensimm�inen'), (2, 'foobar'), (3, ''), (4, null)", conn))
+        using (var cmd = new NpgsqlCommand(
+                   @"INSERT INTO ""lista"" (Id, Selite) VALUES (1, 'Ensimm�inen'), (2, 'foobar'), (3, ''), (4, null)",
+                   conn))
         {
             cmd.ExecuteNonQuery();
         }
@@ -53,10 +53,6 @@ public class ExecuteQueryTests
         conn.Close();
     }
 
-    /// <summary>
-    /// Check that returned id values are 1,2,3.
-    /// </summary>
-    ///
     [Test]
     public async Task QuerydataThreeRows()
     {
@@ -74,16 +70,20 @@ public class ExecuteQueryTests
         Assert.AreEqual(3, (int)result.QueryResult[2]["id"]);
     }
 
-    /// <summary>
-    /// Check that returns no rows with wrong id.
-    /// </summary>
     [Test]
     public async Task QuerydataNoRows()
     {
         var input = new Input
         {
             Query = "SELECT * from lista WHERE id=:ehto",
-            Parameters = new[] { new Parameter { Name = "ehto", Value = 0 } },
+            Parameters = new[]
+            {
+                new Parameter
+                {
+                    Name = "ehto",
+                    Value = 0
+                }
+            },
             ConnectionString = connection,
         };
 
@@ -91,9 +91,6 @@ public class ExecuteQueryTests
         Assert.AreEqual(0, result.QueryResult.Count);
     }
 
-    /// <summary>
-    /// Test non-query operation.
-    /// </summary>
     [Test]
     public async Task TestInsertQuery()
     {
@@ -112,9 +109,6 @@ public class ExecuteQueryTests
         Assert.AreEqual("Viides", (string)result.QueryResult[0]["selite"]);
     }
 
-    /// <summary>
-    /// Test INSERT with RETURNING clause.
-    /// </summary>
     [Test]
     public async Task TestInsertWithReturning()
     {
@@ -134,9 +128,6 @@ public class ExecuteQueryTests
         Assert.AreEqual("Kuudes", (string)result.QueryResult[0]["selite"]);
     }
 
-    /// <summary>
-    /// Test UPDATE with RETURNING clause.
-    /// </summary>
     [Test]
     public async Task TestUpdateWithReturning()
     {
@@ -160,9 +151,6 @@ public class ExecuteQueryTests
         await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
     }
 
-    /// <summary>
-    /// Test DELETE with RETURNING clause.
-    /// </summary>
     [Test]
     public async Task TestDeleteWithReturning()
     {
@@ -186,9 +174,6 @@ public class ExecuteQueryTests
         Assert.AreEqual("Seitsem�s", (string)result.QueryResult[0]["selite"]);
     }
 
-    /// <summary>
-    /// Test INSERT with RETURNING clause using ExecuteType.ExecuteReader explicitly.
-    /// </summary>
     [Test]
     public async Task TestInsertWithReturningExplicit()
     {
@@ -209,9 +194,6 @@ public class ExecuteQueryTests
         Assert.AreEqual("Kahdeksas", (string)result.QueryResult[0]["selite"]);
     }
 
-    /// <summary>
-    /// Test INSERT without RETURNING using ExecuteType.NonQuery explicitly.
-    /// </summary>
     [Test]
     public async Task TestInsertWithNonQueryExplicit()
     {
