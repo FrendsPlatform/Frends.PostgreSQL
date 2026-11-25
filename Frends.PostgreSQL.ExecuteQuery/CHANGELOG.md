@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.0] - 2026-11-25
+### Changed
+- Updated the Task to .NET 8 and added query success and error details to the result.
+- Added options to return query failures as a result or customize their error message; failures still throw by default.
+
 ## [2.0.0] - 2025-12-02
 ### Added
 - Added `ExecuteType` parameter to Input class with options: Auto (default), ExecuteReader, and NonQuery.

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace Frends.PostgreSQL.ExecuteQuery.Definitions;
@@ -8,7 +8,6 @@ namespace Frends.PostgreSQL.ExecuteQuery.Definitions;
 /// </summary>
 public class Input
 {
-
     /// <summary>
     /// Query.
     /// Note: Normal query requires double quotes around Column and 2 single quotes around Value.
@@ -41,5 +40,4 @@ public class Input
     /// <example>ExecuteTypes.Auto</example>
     [DefaultValue(ExecuteTypes.Auto)]
     public ExecuteTypes ExecuteType { get; set; }
-
 }

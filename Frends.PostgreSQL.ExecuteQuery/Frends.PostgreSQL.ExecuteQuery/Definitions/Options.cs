@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
+
 namespace Frends.PostgreSQL.ExecuteQuery.Definitions;
 
 /// <summary>
@@ -6,7 +7,6 @@ namespace Frends.PostgreSQL.ExecuteQuery.Definitions;
 /// </summary>
 public class Options
 {
-
     /// <summary>
     /// Timeout in seconds.
     /// </summary>
@@ -30,4 +30,17 @@ public class Options
     [DefaultValue(TransactionIsolationLevel.Default)]
     public TransactionIsolationLevel SqlTransactionIsolationLevel { get; set; }
 
+    /// <summary>
+    /// Whether to throw an exception when the query fails.
+    /// </summary>
+    /// <example>true</example>
+    [DefaultValue(true)]
+    public bool ThrowErrorOnFailure { get; set; } = true;
+
+    /// <summary>
+    /// Prepends a custom message to the error when the query fails.
+    /// </summary>
+    /// <example>Unable to execute the PostgreSQL query</example>
+    [DefaultValue("")]
+    public string ErrorMessageOnFailure { get; set; } = string.Empty;
 }
