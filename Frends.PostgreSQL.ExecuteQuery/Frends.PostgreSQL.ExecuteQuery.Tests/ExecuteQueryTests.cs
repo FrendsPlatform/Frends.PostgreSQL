@@ -76,14 +76,14 @@ public class ExecuteQueryTests
         var input = new Input
         {
             Query = "SELECT * from lista WHERE id=:ehto",
-            Parameters = new[]
-            {
+            Parameters =
+            [
                 new Parameter
                 {
                     Name = "ehto",
-                    Value = 0
-                }
-            },
+                    Value = 0,
+                },
+            ],
             ConnectionString = connection,
         };
 
