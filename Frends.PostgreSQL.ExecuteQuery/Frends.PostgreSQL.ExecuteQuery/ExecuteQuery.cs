@@ -1,11 +1,12 @@
-﻿using System.Globalization;
-using Frends.PostgreSQL.ExecuteQuery.Definitions;
-using Newtonsoft.Json.Linq;
-using Npgsql;
-using System.Data;
 using System.ComponentModel;
+using System.Data;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.Loader;
+using Frends.PostgreSQL.ExecuteQuery.Definitions;
+using Frends.PostgreSQL.ExecuteQuery.Helpers;
+using Newtonsoft.Json.Linq;
+using Npgsql;
 
 namespace Frends.PostgreSQL.ExecuteQuery;
 
@@ -14,7 +15,6 @@ namespace Frends.PostgreSQL.ExecuteQuery;
 /// </summary>
 public static class PostgreSQL
 {
-
     // For memory cleanup.
     static PostgreSQL()
     {
@@ -27,91 +27,100 @@ public static class PostgreSQL
     /// <summary>
     /// Query data using PostgreSQL. [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.PostgreSQL.ExecuteQuery)
     /// </summary>
-    /// <param name="input">Query, parameters and connection string.</param>
+    /// <param name="input">Query and query parameters.</param>
+    /// <param name="connection">PostgreSQL connection string.</param>
     /// <param name="options">Set timeout and isolation level.</param>
     /// <param name="cancellationToken">Automatically generated and passed by Frends.</param>
-    /// <returns>Result of the query. JToken QueryResult</returns>
-    public static async Task<Result> ExecuteQuery([PropertyTab] Input input, [PropertyTab] Options options, CancellationToken cancellationToken)
+    /// <returns>object { bool Success, JToken QueryResult, object Error { string Message, Exception AdditionalInfo } }</returns>
+    public static async Task<Result> ExecuteQuery([PropertyTab] Input input, [PropertyTab] Connection connection, [PropertyTab] Options options, CancellationToken cancellationToken)
     {
-        Result result;
-        using var conn = new NpgsqlConnection(input.ConnectionString);
-        await conn.OpenAsync(cancellationToken);
-
-        using var cmd = new NpgsqlCommand(input.Query, conn);
-        cmd.CommandTimeout = options.CommandTimeoutSeconds;
-
-        // Add parameters to command, if any were given.
-        if (input.Parameters != null && input.Parameters.Length > 0)
+        try
         {
-            foreach (var parameter in input.Parameters)
+            Result result;
+            using var conn = new NpgsqlConnection(connection.ConnectionString);
+            await conn.OpenAsync(cancellationToken);
+
+            using var cmd = new NpgsqlCommand(input.Query, conn);
+            cmd.CommandTimeout = options.CommandTimeoutSeconds;
+
+            // Add parameters to command, if any were given.
+            if (input.Parameters != null && input.Parameters.Length > 0)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Convert parameter.Value to DBNull.Value if it is set to null.
-                if (parameter.Value == null)
-                    cmd.Parameters.AddWithValue(parameter.Name, DBNull.Value);
-                else
-                    cmd.Parameters.AddWithValue(parameter.Name, parameter.Value);
-            }
-        }
-
-        // Execute command based on ExecuteType.
-        switch (input.ExecuteType)
-        {
-            case ExecuteTypes.Auto:
-                // Auto-detect: Try ExecuteReader first to check if data is returned
+                foreach (var parameter in input.Parameters)
                 {
-                    using var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
-                    cmd.Transaction = transaction;
+                    cancellationToken.ThrowIfCancellationRequested();
 
+                    // Convert parameter.Value to DBNull.Value if it is set to null.
+                    if (parameter.Value == null)
+                        cmd.Parameters.AddWithValue(parameter.Name, DBNull.Value);
+                    else
+                        cmd.Parameters.AddWithValue(parameter.Name, parameter.Value);
+                }
+            }
+
+            // Execute command based on ExecuteType.
+            switch (input.ExecuteType)
+            {
+                case ExecuteTypes.Auto:
+                    // Auto-detect: Try ExecuteReader first to check if data is returned
+                    {
+                        using var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+                        cmd.Transaction = transaction;
+
+                        using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
+                        {
+                            // Check if the query returned any data (has columns)
+                            if (reader.FieldCount > 0)
+                            {
+                                // Query returned data (SELECT or RETURNING clause)
+                                result = new Result(reader.ToJson(cancellationToken));
+                            }
+                            else
+                            {
+                                // Query did not return data, use RecordsAffected
+                                result = new Result(JToken.FromObject(new { AffectedRows = reader.RecordsAffected }));
+                            }
+                        } // Reader is disposed here
+
+                        await transaction.CommitAsync(cancellationToken);
+                    }
+
+                    break;
+
+                case ExecuteTypes.ExecuteReader:
+                    // Explicitly return data - no transaction needed for read-only queries
                     using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
                     {
-                        // Check if the query returned any data (has columns)
-                        if (reader.FieldCount > 0)
-                        {
-                            // Query returned data (SELECT or RETURNING clause)
-                            result = new Result(reader.ToJson(cancellationToken));
-                        }
-                        else
-                        {
-                            // Query did not return data, use RecordsAffected
-                            result = new Result(JToken.FromObject(new { AffectedRows = reader.RecordsAffected }));
-                        }
-                    } // Reader is disposed here
+                        result = new Result(reader.ToJson(cancellationToken));
+                    }
 
-                    await transaction.CommitAsync(cancellationToken);
-                }
-                break;
+                    break;
 
-            case ExecuteTypes.ExecuteReader:
-                // Explicitly return data - no transaction needed for read-only queries
-                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
-                {
-                    result = new Result(reader.ToJson(cancellationToken));
-                }
-                break;
+                case ExecuteTypes.NonQuery:
+                    // Execute without returning data - use transaction
+                    {
+                        using var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
+                        cmd.Transaction = transaction;
+                        var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
+                        result = new Result(JToken.FromObject(new { AffectedRows = rows }));
+                        await transaction.CommitAsync(cancellationToken);
+                    }
 
-            case ExecuteTypes.NonQuery:
-                // Execute without returning data - use transaction
-                {
-                    using var transaction = conn.BeginTransaction(GetIsolationLevel(options.SqlTransactionIsolationLevel));
-                    cmd.Transaction = transaction;
-                    var rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
-                    result = new Result(JToken.FromObject(new { AffectedRows = rows }));
-                    await transaction.CommitAsync(cancellationToken);
-                }
-                break;
+                    break;
 
-            default:
-                throw new ArgumentException($"Unsupported ExecuteType: {input.ExecuteType}");
+                default:
+                    throw new ArgumentException($"Unsupported ExecuteType: {input.ExecuteType}");
+            }
+
+            await conn.CloseAsync();
+
+            return result;
         }
-
-        await conn.CloseAsync();
-
-        return result;
+        catch (Exception ex)
+        {
+            return ex.Handle(options);
+        }
     }
-
-    #region HelperMethods
 
     // Extension method for NpgsqlDataReader to read the data and return it as JToken.
     private static JToken ToJson(this NpgsqlDataReader reader, CancellationToken cancellationToken)
@@ -128,6 +137,7 @@ public static class PostgreSQL
             while (reader.Read())
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
                 // Start row object.
                 writer.WriteStartObject();
                 for (var i = 0; i < reader.FieldCount; i++)
@@ -142,6 +152,7 @@ public static class PostgreSQL
                 // End row object.
                 writer.WriteEndObject();
             }
+
             // End array.
             writer.WriteEndArray();
 
@@ -152,7 +163,6 @@ public static class PostgreSQL
     // Determine transaction isolation level from Options-class.
     private static IsolationLevel GetIsolationLevel(TransactionIsolationLevel level)
     {
-
         return level switch
         {
             TransactionIsolationLevel.None => IsolationLevel.Unspecified,
@@ -162,11 +172,9 @@ public static class PostgreSQL
             TransactionIsolationLevel.Snapshot => IsolationLevel.Snapshot,
             TransactionIsolationLevel.Default => IsolationLevel.Serializable,
             TransactionIsolationLevel.Serializable => IsolationLevel.Serializable,
-            _ => IsolationLevel.Serializable
+            _ => IsolationLevel.Serializable,
         };
     }
-
-    #endregion
 
     private static void OnPluginUnloadingRequested(AssemblyLoadContext obj)
     {

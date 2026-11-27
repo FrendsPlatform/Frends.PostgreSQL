@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.0] - 2026-11-27
+### Changed
+- [Breaking] Moved `ConnectionString` from the `Input` tab to the `Connection` tab.
+- Updated the Task to .NET 8
+- Added `Success` and `Error` to the result.
+- Added `ThrowErrorOnFailure` and `ErrorMessageOnFailure` to the options. Failures still throw by default.
+
 ## [2.0.0] - 2025-12-02
 ### Added
 - Added `ExecuteType` parameter to Input class with options: Auto (default), ExecuteReader, and NonQuery.

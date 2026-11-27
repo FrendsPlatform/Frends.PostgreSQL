@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace Frends.PostgreSQL.ExecuteQuery.Definitions;
@@ -8,7 +8,6 @@ namespace Frends.PostgreSQL.ExecuteQuery.Definitions;
 /// </summary>
 public class Input
 {
-
     /// <summary>
     /// Query.
     /// Note: Normal query requires double quotes around Column and 2 single quotes around Value.
@@ -26,13 +25,6 @@ public class Input
     public Parameter[] Parameters { get; set; }
 
     /// <summary>
-    /// Connection string.
-    /// </summary>
-    /// <example>Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;</example>
-    [PasswordPropertyText]
-    public string ConnectionString { get; set; }
-
-    /// <summary>
     /// Specifies how a command string is interpreted.
     /// Auto: Automatically detects if the query returns data (SELECT or RETURNING clause) and uses ExecuteReader, otherwise uses NonQuery.
     /// ExecuteReader: Use this to execute queries that return a result set (SELECT or INSERT/UPDATE/DELETE with RETURNING clause).
@@ -41,5 +33,4 @@ public class Input
     /// <example>ExecuteTypes.Auto</example>
     [DefaultValue(ExecuteTypes.Auto)]
     public ExecuteTypes ExecuteType { get; set; }
-
 }

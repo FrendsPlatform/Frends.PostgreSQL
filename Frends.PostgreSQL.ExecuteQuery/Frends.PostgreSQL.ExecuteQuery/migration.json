@@ -1,0 +1,18 @@
+[
+  {
+    "Task": "Frends.PostgreSQL.ExecuteQuery",
+    "Migrations": [
+      {
+        "Version": "3.0.0",
+        "Description": "Moved ConnectionString from Input to Connection.",
+        "Migration": [
+          {
+            "Type": "Copy",
+            "Source": "Input.ConnectionString",
+            "Target": "Connection.ConnectionString"
+          }
+        ]
+      }
+    ]
+  }
+]

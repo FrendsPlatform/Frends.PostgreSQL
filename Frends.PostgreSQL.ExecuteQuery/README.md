@@ -1,31 +1,35 @@
 # Frends.PostgreSQL.ExecuteQuery
-Frends Task for executing queries or non-queries to PostgreSQL database.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT) 
-[![Build](https://github.com/FrendsPlatform/Frends.PostgreSQL/actions/workflows/ExecuteQuery_build_and_test_on_main.yml/badge.svg)](https://github.com/FrendsPlatform/Frends.PostgreSQL/actions)
-![MyGet](https://img.shields.io/myget/frends-tasks/v/Frends.PostgreSQL.ExecuteQuery)
-![Coverage](https://app-github-custom-badges.azurewebsites.net/Badge?key=FrendsPlatform/Frends.PostgreSQL/Frends.PostgreSQL.ExecuteQuery|main)
+Frends Task for executing queries or non-queries against a PostgreSQL database.
 
-# Installing
+[![Build status](https://github.com/FrendsPlatform/Frends.PostgreSQL/actions/workflows/Execute_main_release.yml/badge.svg)](https://github.com/FrendsPlatform/Frends.PostgreSQL/actions/workflows/Execute_main_release.yml)
+![Code Coverage](https://app-github-custom-badges.azurewebsites.net/Badge?key=FrendsPlatform/Frends.PostgreSQL/Frends.PostgreSQL.ExecuteQuery|main)
+[![Repository License](https://img.shields.io/github/license/FrendsPlatform/Frends.PostgreSQL?label=License)](https://github.com/FrendsPlatform/Frends.PostgreSQL/blob/main/LICENSE)
+
+## Installing
 
 You can install the Task via Frends UI Task View or you can find the NuGet package from the following NuGet feed https://www.myget.org/F/frends-tasks/api/v2.
 
 ## Building
 
+### Clone a copy of the repository
 
-Build the project
+`git clone https://github.com/FrendsPlatform/Frends.PostgreSQL.git`
 
- `dotnet build`
+### Build the project
 
-Run tests
+`dotnet build`
 
- To run tests you need to test database. You can start a test database using Docker with
- `docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres`
- 
- When container is running you can start test with
- `dotnet test`
+### Run tests
 
+The tests require a local PostgreSQL database. Start one with Docker:
 
-Create a NuGet package
+`docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres`
 
- `dotnet pack --configuration Release`
+Then run:
+
+`dotnet test`
+
+### Create a NuGet package
+
+`dotnet pack --configuration Release`

@@ -24,5 +24,5 @@ public enum ExecuteTypes
     /// Use for SELECT queries or INSERT/UPDATE/DELETE with RETURNING clause.
     /// Returns the data rows.
     /// </summary>
-    ExecuteReader
+    ExecuteReader,
 }
