@@ -22,14 +22,14 @@ public class Result
     public bool Success { get; set; }
 
     /// <summary>
-    /// Error that occurred during query execution.
-    /// </summary>
-    /// <example>object { string Message, Exception AdditionalInfo }</example>
-    public Error Error { get; set; }
-
-    /// <summary>
     /// Result of the query.
     /// </summary>
     /// <example>[{ "id": 123, "Name": "Matti" }, { "id": 124, "Name": "Teppo" }]</example>
     public dynamic QueryResult { get; private set; }
+
+    /// <summary>
+    /// Error that occurred during query execution.
+    /// </summary>
+    /// <example>object { string Message, Exception AdditionalInfo }</example>
+    public Error Error { get; set; }
 }

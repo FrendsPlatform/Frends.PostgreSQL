@@ -27,16 +27,17 @@ public static class PostgreSQL
     /// <summary>
     /// Query data using PostgreSQL. [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.PostgreSQL.ExecuteQuery)
     /// </summary>
-    /// <param name="input">Query, parameters and connection string.</param>
+    /// <param name="input">Query and query parameters.</param>
+    /// <param name="connection">PostgreSQL connection string.</param>
     /// <param name="options">Set timeout and isolation level.</param>
     /// <param name="cancellationToken">Automatically generated and passed by Frends.</param>
     /// <returns>object { bool Success, JToken QueryResult, object Error { string Message, Exception AdditionalInfo } }</returns>
-    public static async Task<Result> ExecuteQuery([PropertyTab] Input input, [PropertyTab] Options options, CancellationToken cancellationToken)
+    public static async Task<Result> ExecuteQuery([PropertyTab] Input input, [PropertyTab] Connection connection, [PropertyTab] Options options, CancellationToken cancellationToken)
     {
         try
         {
             Result result;
-            using var conn = new NpgsqlConnection(input.ConnectionString);
+            using var conn = new NpgsqlConnection(connection.ConnectionString);
             await conn.OpenAsync(cancellationToken);
 
             using var cmd = new NpgsqlCommand(input.Query, conn);

@@ -12,8 +12,10 @@ public class ExecuteQueryTests
 {
     // These test requires local postgres database, create it e.g. with
     // docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
-    private readonly string connection =
+    private const string ConnectionString =
         "Host=localhost;Database=postgres;Port=5432;User Id=postgres;Password=mysecretpassword;";
+
+    private readonly Connection connection = new() { ConnectionString = ConnectionString };
 
     private readonly Options options = new()
     {
@@ -24,7 +26,7 @@ public class ExecuteQueryTests
     [OneTimeSetUp]
     public void TestSetup()
     {
-        using var conn = new NpgsqlConnection(connection);
+        using var conn = new NpgsqlConnection(ConnectionString);
         conn.Open();
 
         using (var cmd = new NpgsqlCommand(@"CREATE TABLE IF NOT EXISTS ""lista"" (Id int, Selite varchar)", conn))
@@ -45,7 +47,7 @@ public class ExecuteQueryTests
     [OneTimeTearDown]
     public void OneTimeTearDown()
     {
-        using var conn = new NpgsqlConnection(connection);
+        using var conn = new NpgsqlConnection(ConnectionString);
         conn.Open();
 
         using var cmd = new NpgsqlCommand(@"DROP TABLE ""lista""", conn);
@@ -60,10 +62,9 @@ public class ExecuteQueryTests
         {
             Query = "SELECT * FROM lista",
             Parameters = null,
-            ConnectionString = connection,
         };
 
-        var result = await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        var result = await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
 
         Assert.AreEqual(1, (int)result.QueryResult[0]["id"]);
         Assert.AreEqual(2, (int)result.QueryResult[1]["id"]);
@@ -84,10 +85,9 @@ public class ExecuteQueryTests
                     Value = 0,
                 },
             ],
-            ConnectionString = connection,
         };
 
-        var result = await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        var result = await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
         Assert.AreEqual(0, result.QueryResult.Count);
     }
 
@@ -98,14 +98,13 @@ public class ExecuteQueryTests
         {
             Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (5, 'Viides')",
             Parameters = null,
-            ConnectionString = connection,
         };
 
-        var result = await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        var result = await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
         Assert.AreEqual(1, (int)result.QueryResult["AffectedRows"]);
 
         input.Query = "SELECT * from lista WHERE id=5";
-        result = await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        result = await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
         Assert.AreEqual("Viides", (string)result.QueryResult[0]["selite"]);
     }
 
@@ -116,10 +115,9 @@ public class ExecuteQueryTests
         {
             Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (6, 'Kuudes') RETURNING Id, Selite",
             Parameters = null,
-            ConnectionString = connection,
         };
 
-        var result = await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        var result = await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
 
         // Should return the inserted values, not AffectedRows
         Assert.IsNotNull(result.QueryResult);
@@ -135,10 +133,9 @@ public class ExecuteQueryTests
         {
             Query = @"UPDATE ""lista"" SET Selite = 'Updated' WHERE Id = 1 RETURNING Id, Selite",
             Parameters = null,
-            ConnectionString = connection,
         };
 
-        var result = await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        var result = await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
 
         // Should return the updated values
         Assert.IsNotNull(result.QueryResult);
@@ -148,7 +145,7 @@ public class ExecuteQueryTests
 
         // Restore original value
         input.Query = @"UPDATE ""lista"" SET Selite = 'Ensimm�inen' WHERE Id = 1";
-        await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
     }
 
     [Test]
@@ -159,13 +156,12 @@ public class ExecuteQueryTests
         {
             Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (7, 'Seitsem�s')",
             Parameters = null,
-            ConnectionString = connection,
         };
-        await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
 
         // Now delete it with RETURNING
         input.Query = @"DELETE FROM ""lista"" WHERE Id = 7 RETURNING Id, Selite";
-        var result = await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        var result = await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
 
         // Should return the deleted values
         Assert.IsNotNull(result.QueryResult);
@@ -181,11 +177,10 @@ public class ExecuteQueryTests
         {
             Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (8, 'Kahdeksas') RETURNING Id, Selite",
             Parameters = null,
-            ConnectionString = connection,
             ExecuteType = ExecuteTypes.ExecuteReader,
         };
 
-        var result = await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        var result = await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
 
         // Should return the inserted values
         Assert.IsNotNull(result.QueryResult);
@@ -201,11 +196,10 @@ public class ExecuteQueryTests
         {
             Query = @"INSERT INTO ""lista"" (Id, Selite) VALUES (9, 'Yhdeks�s')",
             Parameters = null,
-            ConnectionString = connection,
             ExecuteType = ExecuteTypes.NonQuery,
         };
 
-        var result = await PostgreSQL.ExecuteQuery(input, options, CancellationToken.None);
+        var result = await PostgreSQL.ExecuteQuery(input, connection, options, CancellationToken.None);
 
         // Should return affected rows
         Assert.AreEqual(1, (int)result.QueryResult["AffectedRows"]);
